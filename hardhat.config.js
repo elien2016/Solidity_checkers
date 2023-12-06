@@ -1,4 +1,5 @@
 require('@nomicfoundation/hardhat-toolbox');
+require('hardhat-gas-reporter');
 
 // NEVER record important private keys in your code - this is for demo purposes
 const GOERLI_TESTNET_PRIVATE_KEY = '';
