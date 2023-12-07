@@ -36,6 +36,7 @@ contract Checkers {
     uint8 numBlackJumps;
     uint8 numRedJumps;
     uint8[2] continuePiece;
+    bool[2] public agreedToTie;
 
     constructor(
         address opponent,
@@ -347,13 +348,26 @@ contract Checkers {
         turnDeadline = block.number + turnLength;
     }
 
+    function tie() public {
+        require(!ended);
+
+        if (msg.sender == playerAddresses[0]) {
+            agreedToTie[0] = true;
+        } else if (msg.sender == playerAddresses[1]) {
+            agreedToTie[1] = true;
+        }
+    }
+
     function withdraw() public {
         require(block.number > turnDeadline);
         if (!ended) {
-            playerBalances[
-                playerAddresses[currentPlayer ^ 0x01]
-            ] += playerBalances[playerAddresses[currentPlayer]];
-            playerBalances[playerAddresses[currentPlayer]] = 0;
+            if (!(agreedToTie[0] && agreedToTie[1])) {
+                playerBalances[
+                    playerAddresses[currentPlayer ^ 0x01]
+                ] += playerBalances[playerAddresses[currentPlayer]];
+                playerBalances[playerAddresses[currentPlayer]] = 0;
+            }
+
             ended = true;
         }
 
