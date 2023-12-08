@@ -2,6 +2,8 @@
 pragma solidity ^0.8.9;
 
 contract Checkers {
+    event Error(string reason);
+
     enum SquareState {
         Empty,
         Black,
@@ -22,10 +24,11 @@ contract Checkers {
     bytes32 p1Commitment;
     uint128 p2Nonce;
 
-    SquareState[8][8] public board;
+    SquareState[8][8] board;
     uint8 public currentPlayer;
     uint32 public turnLength;
     uint public turnDeadline;
+    bool public p2Joined;
     bool public started;
     bool public ended;
 
@@ -53,13 +56,19 @@ contract Checkers {
         p1Commitment = _p1Commitment;
     }
 
+    function getSquareState(uint8 i, uint8 j) public view returns (uint8) {
+        return uint8(board[i][j]);
+    }
+
     function joinGame(uint128 _p2Nonce) public payable {
-        require(block.number <= turnDeadline);
-        require(msg.sender == playerAddresses[1]);
+        require(msg.sender == playerAddresses[1], "Not your game");
+        require(!p2Joined, "Already joined");
+        require(block.number <= turnDeadline, "Turn has expired, game over");
         require(msg.value >= stake, "Insufficient stake");
 
         playerBalances[playerAddresses[1]] = msg.value;
         p2Nonce = _p2Nonce;
+        p2Joined = true;
         turnDeadline = block.number + turnLength;
     }
 
@@ -90,11 +99,13 @@ contract Checkers {
         board[7][6] = SquareState.Black;
     }
 
-    function startGame(uint128 p1Nonce) public {
-        require(!started);
-        require(block.number <= turnDeadline, "Game is over");
+    function startGame(uint128 p1Nonce, uint secret) public {
+        require(msg.sender == playerAddresses[0]);
+        require(p2Joined, "Opponent has not joined");
+        require(!started, "Game has already started");
+        require(block.number <= turnDeadline, "Turn has expired, game over");
         require(
-            keccak256(abi.encode(p1Nonce)) == p1Commitment,
+            keccak256(abi.encode(p1Nonce, secret)) == p1Commitment,
             "Nonce does not check out"
         );
 
@@ -123,43 +134,45 @@ contract Checkers {
         int8 y2_ = int8(j) + 2;
 
         if (playerColor == PlayerColor.Black) {
-            return ((x >= 0 &&
+            return (x >= 0 &&
                 x <= 7 &&
                 x_ >= 0 &&
                 x_ <= 7 &&
-                (y1 >= 0 &&
+                ((y1 >= 0 &&
                     y1 <= 7 &&
                     (board[uint8(x)][uint8(y1)] == SquareState.Red ||
                         board[uint8(x)][uint8(y1)] == SquareState.RedKing) &&
                     y1_ >= 0 &&
                     y1_ <= 7 &&
-                    board[uint8(x_)][uint8(y1_)] == SquareState.Empty)) ||
-                (y2 >= 0 &&
-                    y2 <= 7 &&
-                    (board[uint8(x)][uint8(y2)] == SquareState.Red ||
-                        board[uint8(x)][uint8(y2)] == SquareState.RedKing) &&
-                    y2_ >= 0 &&
-                    y2_ <= 7 &&
-                    board[uint8(x_)][uint8(y2_)] == SquareState.Empty));
+                    board[uint8(x_)][uint8(y1_)] == SquareState.Empty) ||
+                    (y2 >= 0 &&
+                        y2 <= 7 &&
+                        (board[uint8(x)][uint8(y2)] == SquareState.Red ||
+                            board[uint8(x)][uint8(y2)] ==
+                            SquareState.RedKing) &&
+                        y2_ >= 0 &&
+                        y2_ <= 7 &&
+                        board[uint8(x_)][uint8(y2_)] == SquareState.Empty)));
         } else {
-            return ((x >= 0 &&
+            return (x >= 0 &&
                 x <= 7 &&
                 x_ >= 0 &&
                 x_ <= 7 &&
-                (y1 >= 0 &&
+                ((y1 >= 0 &&
                     y1 <= 7 &&
                     (board[uint8(x)][uint8(y1)] == SquareState.Black ||
                         board[uint8(x)][uint8(y1)] == SquareState.BlackKing) &&
                     y1_ >= 0 &&
                     y1_ <= 7 &&
-                    board[uint8(x_)][uint8(y1_)] == SquareState.Empty)) ||
-                (y2 >= 0 &&
-                    y2 <= 7 &&
-                    (board[uint8(x)][uint8(y2)] == SquareState.Black ||
-                        board[uint8(x)][uint8(y2)] == SquareState.BlackKing) &&
-                    y2_ >= 0 &&
-                    y2_ <= 7 &&
-                    board[uint8(x_)][uint8(y2_)] == SquareState.Empty));
+                    board[uint8(x_)][uint8(y1_)] == SquareState.Empty) ||
+                    (y2 >= 0 &&
+                        y2 <= 7 &&
+                        (board[uint8(x)][uint8(y2)] == SquareState.Black ||
+                            board[uint8(x)][uint8(y2)] ==
+                            SquareState.BlackKing) &&
+                        y2_ >= 0 &&
+                        y2_ <= 7 &&
+                        board[uint8(x_)][uint8(y2_)] == SquareState.Empty)));
         }
     }
 
@@ -169,7 +182,7 @@ contract Checkers {
 
         if (playerColor == PlayerColor.Black) {
             for (uint8 i = 0; i < 8; i++) {
-                for (uint8 j = 0; i < 8; j++) {
+                for (uint8 j = 0; j < 8; j++) {
                     if (
                         board[i][j] == SquareState.Black ||
                         board[i][j] == SquareState.BlackKing
@@ -190,11 +203,11 @@ contract Checkers {
                 }
             }
 
-            redJumps = jumps;
-            numRedJumps = numJumps;
+            blackJumps = jumps;
+            numBlackJumps = numJumps;
         } else {
             for (uint8 i = 0; i < 8; i++) {
-                for (uint8 j = 0; i < 8; j++) {
+                for (uint8 j = 0; j < 8; j++) {
                     if (
                         board[i][j] == SquareState.Red ||
                         board[i][j] == SquareState.RedKing
@@ -215,14 +228,16 @@ contract Checkers {
                 }
             }
 
-            blackJumps = jumps;
-            numBlackJumps = numJumps;
+            redJumps = jumps;
+            numRedJumps = numJumps;
         }
     }
 
     function makeMove(uint8 fromX, uint8 fromY, uint8 toX, uint8 toY) public {
-        require(!ended, "Game is over");
         require(msg.sender == playerAddresses[currentPlayer], "Not your turn");
+        require(started, "Game has not started");
+        require(!ended, "Game is over");
+        require(block.number <= turnDeadline, "Turn has expired, game over");
         require(
             fromX >= 0 &&
                 fromX <= 7 &&
@@ -258,18 +273,21 @@ contract Checkers {
                 if (board[fromX][fromY] == SquareState.Black) {
                     require(
                         toX == fromX - 1 &&
-                            (toY == fromY - 1 || toY == fromY + 1)
+                            (toY == fromY + 1 || toY == fromY - 1),
+                        "Invalid move"
                     );
                 } else {
                     require(
-                        (toX == fromX - 1 || toX == fromX + 1) &&
-                            (toY == fromY - 1 || toY == fromY + 1)
+                        (toX == fromX + 1 || toX == fromX - 1) &&
+                            (toY == fromY + 1 || toY == fromY - 1),
+                        "Invalid move"
                     );
                 }
             } else {
                 require(
                     blackJumps[fromX][fromY] == true ||
-                        (continuePiece[0] != 10 && continuePiece[1] != 10)
+                        (continuePiece[0] != 10 && continuePiece[1] != 10),
+                    "Piece not jumpable"
                 );
                 board[(fromX + toX) / 2][(fromY + toY) / 2] = SquareState.Empty;
                 numRedPieces -= 1;
@@ -297,18 +315,21 @@ contract Checkers {
                 if (board[fromX][fromY] == SquareState.Red) {
                     require(
                         toX == fromX + 1 &&
-                            (toY == fromY - 1 || toY == fromY + 1)
+                            (toY == fromY + 1 || toY == fromY - 1),
+                        "Invalid move"
                     );
                 } else {
                     require(
                         (toX == fromX + 1 || toX == fromX - 1) &&
-                            (toY == fromY - 1 || toY == fromY + 1)
+                            (toY == fromY + 1 || toY == fromY - 1),
+                        "Invalid move"
                     );
                 }
             } else {
                 require(
                     redJumps[fromX][fromY] == true ||
-                        (continuePiece[0] != 10 && continuePiece[1] != 10)
+                        (continuePiece[0] != 10 && continuePiece[1] != 10),
+                    "Piece not jumpable"
                 );
                 board[(fromX + toX) / 2][(fromY + toY) / 2] = SquareState.Empty;
                 numBlackPieces -= 1;
@@ -349,7 +370,7 @@ contract Checkers {
     }
 
     function tie() public {
-        require(!ended);
+        require(!ended, "Game is over");
 
         if (msg.sender == playerAddresses[0]) {
             agreedToTie[0] = true;
@@ -359,17 +380,26 @@ contract Checkers {
     }
 
     function withdraw() public {
-        require(block.number > turnDeadline);
-        if (!ended) {
+        require(
+            msg.sender == playerAddresses[0] || msg.sender == playerAddresses[1]
+        );
+        require(
+            !started ||
+                ended ||
+                (agreedToTie[0] && agreedToTie[1]) ||
+                block.number > turnDeadline,
+            "Game is not over"
+        );
+
+        if (started && !ended) {
             if (!(agreedToTie[0] && agreedToTie[1])) {
                 playerBalances[
                     playerAddresses[currentPlayer ^ 0x01]
                 ] += playerBalances[playerAddresses[currentPlayer]];
                 playerBalances[playerAddresses[currentPlayer]] = 0;
             }
-
-            ended = true;
         }
+        ended = true;
 
         uint amount = playerBalances[msg.sender];
         if (amount > 0) {
