@@ -22,4 +22,9 @@ module.exports = {
       //accounts: [ARBITRUM_MAINNET_TEMPORARY_PRIVATE_KEY]
     },
   },
+  gasReporter: {
+    currency: 'USD',
+    showTimeSpent: true,
+    coinmarketcap: process.env.API_KEY,
+  },
 };
