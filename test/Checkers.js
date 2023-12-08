@@ -6,6 +6,8 @@ const {
 const { expect } = require('chai');
 
 describe('CheckersTest', function () {
+  // test gameplay is based on https://recordsetter.com/world-record/-finish-single-game-checkers/40778 (with video) (Fastest Time To Finish A Single Game Of Checkers)
+
   async function deployFixture() {
     const [alice, bob, other] = await ethers.getSigners();
     const aliceCommitment = ethers.solidityPackedKeccak256(
