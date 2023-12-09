@@ -2,8 +2,6 @@
 pragma solidity ^0.8.9;
 
 contract Checkers {
-    event Error(string reason);
-
     enum SquareState {
         Empty,
         Black,
@@ -11,6 +9,7 @@ contract Checkers {
         BlackKing,
         RedKing
     }
+
     enum PlayerColor {
         Black,
         Red
@@ -41,6 +40,16 @@ contract Checkers {
     uint8[2] continuePiece;
     bool[2] public agreedToTie;
 
+    modifier beforeTurnDeadline() {
+        require(block.number <= turnDeadline, "Turn has expired, game over");
+        _;
+    }
+
+    modifier gameNotOver() {
+        require(!ended, "Game is over");
+        _;
+    }
+
     constructor(
         address opponent,
         uint32 _turnLength,
@@ -60,10 +69,9 @@ contract Checkers {
         return uint8(board[i][j]);
     }
 
-    function joinGame(uint128 _p2Nonce) public payable {
+    function joinGame(uint128 _p2Nonce) public payable beforeTurnDeadline {
         require(msg.sender == playerAddresses[1], "Not your game");
         require(!p2Joined, "Already joined");
-        require(block.number <= turnDeadline, "Turn has expired, game over");
         require(msg.value >= stake, "Insufficient stake");
 
         playerBalances[playerAddresses[1]] = msg.value;
@@ -99,11 +107,10 @@ contract Checkers {
         board[7][6] = SquareState.Black;
     }
 
-    function startGame(uint128 p1Nonce, uint secret) public {
+    function startGame(uint128 p1Nonce, uint secret) public beforeTurnDeadline {
         require(msg.sender == playerAddresses[0]);
         require(p2Joined, "Opponent has not joined");
         require(!started, "Game has already started");
-        require(block.number <= turnDeadline, "Turn has expired, game over");
         require(
             keccak256(abi.encode(p1Nonce, secret)) == p1Commitment,
             "Nonce does not check out"
@@ -233,11 +240,14 @@ contract Checkers {
         }
     }
 
-    function makeMove(uint8 fromX, uint8 fromY, uint8 toX, uint8 toY) public {
+    function makeMove(
+        uint8 fromX,
+        uint8 fromY,
+        uint8 toX,
+        uint8 toY
+    ) public beforeTurnDeadline gameNotOver {
         require(msg.sender == playerAddresses[currentPlayer], "Not your turn");
         require(started, "Game has not started");
-        require(!ended, "Game is over");
-        require(block.number <= turnDeadline, "Turn has expired, game over");
         require(
             fromX >= 0 &&
                 fromX <= 7 &&
@@ -369,9 +379,7 @@ contract Checkers {
         turnDeadline = block.number + turnLength;
     }
 
-    function tie() public {
-        require(!ended, "Game is over");
-
+    function tie() public gameNotOver {
         if (msg.sender == playerAddresses[0]) {
             agreedToTie[0] = true;
         } else if (msg.sender == playerAddresses[1]) {
