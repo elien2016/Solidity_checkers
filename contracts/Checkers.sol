@@ -249,14 +249,7 @@ contract Checkers {
         require(msg.sender == playerAddresses[currentPlayer], "Not your turn");
         require(started, "Game has not started");
         require(
-            fromX >= 0 &&
-                fromX <= 7 &&
-                fromY >= 0 &&
-                fromY <= 7 &&
-                toX >= 0 &&
-                toX <= 7 &&
-                toY >= 0 &&
-                toY <= 7,
+            fromX <= 7 && fromY <= 7 && toX <= 7 && toY <= 7,
             "Out of bounds"
         );
         if (continuePiece[0] != 10 && continuePiece[1] != 10) {
