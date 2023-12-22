@@ -176,9 +176,7 @@ describe('CheckersTest', function () {
       await expect(checkers.connect(other).joinGame(173, { value: 1000 })).to.be
         .reverted;
     });
-  });
 
-  describe('BeforeGameEnd', function () {
     it('Opponent should be able to withdraw and end the game before host starts the game', async function () {
       const { checkers, alice, bob } = await loadFixture(deployFixture);
 
@@ -208,7 +206,9 @@ describe('CheckersTest', function () {
       // contract's balance should be 0 wei
       expect(await getBalance(checkers)).to.equal(0);
     });
+  });
 
+  describe('BeforeGameEnd', function () {
     it('Host should be able to start the game', async function () {
       const { checkers, alice, bob } = await loadFixture(deployFixture);
 
