@@ -1,13 +1,9 @@
-# Sample Hardhat Project
+# Checkers Smart Contract
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+Checkers implemented using Hardhat.
 
-Try running some of the following tasks:
+Callenge someone by specifying their address when deploying, optionally specifying a stake that the challenged must match.
 
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.js
-```
+## Features
+<img width="1071" alt="2000_tests" src="https://github.com/elien2016/Solidity_checkers/assets/65316754/60b7fe2f-5171-4a87-9255-68a700fd5fd1">
+(optimizer enabled with 2000 runs)
